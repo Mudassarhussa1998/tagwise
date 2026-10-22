@@ -6,6 +6,7 @@ to a local User row that carries the organization and role.
 """
 
 import base64
+import logging
 import os
 from dataclasses import dataclass
 from functools import lru_cache
@@ -20,12 +21,14 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
 
-CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "")
-CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY", "")
+# .strip(): keys pasted into hosting dashboards often carry a stray space or newline.
+CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "").strip()
+CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY", "").strip()
 # Origins allowed to have minted the token (the `azp` claim). Empty disables the check.
-AUTHORIZED_PARTIES = [p for p in os.getenv("CLERK_AUTHORIZED_PARTIES", "http://localhost:3000").split(",") if p]
+AUTHORIZED_PARTIES = [p.strip().rstrip("/") for p in os.getenv("CLERK_AUTHORIZED_PARTIES", "http://localhost:3000").split(",") if p.strip()]
 
 bearer = HTTPBearer(auto_error=False)
+log = logging.getLogger("tagwise.auth")
 
 
 def clerk_issuer() -> str:
@@ -108,9 +111,18 @@ def fetch_clerk_profile(clerk_id: str) -> ClerkProfile:
             headers={"Authorization": f"Bearer {CLERK_SECRET_KEY}"},
             timeout=10,
         )
-        res.raise_for_status()
-    except httpx.HTTPError:
-        raise HTTPException(502, "Couldn't load your profile from Clerk. Try again.")
+    except httpx.HTTPError as e:
+        log.warning("Clerk user lookup failed: %r", e)
+        raise HTTPException(502, "Couldn't reach Clerk to load your profile. Try again.")
+    if res.status_code in (401, 403):
+        log.error("Clerk rejected CLERK_SECRET_KEY (HTTP %s)", res.status_code)
+        raise HTTPException(500, "The API server's CLERK_SECRET_KEY is invalid. Check it in the hosting dashboard.")
+    if res.status_code == 404:
+        log.error("Clerk user %s not found: CLERK_SECRET_KEY is for a different Clerk app than CLERK_PUBLISHABLE_KEY", clerk_id)
+        raise HTTPException(500, "The API server's CLERK_SECRET_KEY belongs to a different Clerk application than its publishable key.")
+    if res.is_error:
+        log.warning("Clerk user lookup returned HTTP %s: %s", res.status_code, res.text[:200])
+        raise HTTPException(502, f"Clerk returned an error ({res.status_code}) while loading your profile. Try again.")
     data = res.json()
     email = next(
         (

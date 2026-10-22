@@ -57,3 +57,18 @@ def test_s3_client_uses_path_style_for_supabase(monkeypatch):
         assert url.startswith("https://proj.storage.supabase.co/storage/v1/s3/photos/a.png?")
     finally:
         storage._client.cache_clear()
+
+
+def test_clerk_profile_errors_name_the_misconfiguration(monkeypatch):
+    import httpx
+    import pytest
+    from fastapi import HTTPException
+
+    from app import security
+
+    monkeypatch.setattr(security, "CLERK_SECRET_KEY", "sk_test_x")
+    for status, expected in ((401, "CLERK_SECRET_KEY is invalid"), (404, "different Clerk application"), (500, "Clerk returned an error (500)")):
+        monkeypatch.setattr(security.httpx, "get", lambda *a, status=status, **k: httpx.Response(status, request=httpx.Request("GET", "https://api.clerk.com")))
+        with pytest.raises(HTTPException) as err:
+            security.fetch_clerk_profile("user_1")
+        assert expected in err.value.detail
