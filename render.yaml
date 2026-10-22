@@ -1,0 +1,42 @@
+# Render blueprint for the Tagwise API (FastAPI).
+# Render dashboard → New → Blueprint → pick this repo. Secrets marked `sync: false`
+# are asked for in the dashboard and never stored in git. See DEPLOY.md.
+services:
+  - type: web
+    name: tagwise-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Apply database migrations, then start the API.
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      # Supabase → Connect → "Session pooler" connection string (IPv4).
+      - key: DATABASE_URL
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      # Your Netlify site URL, e.g. https://tagwise.netlify.app
+      - key: CLERK_AUTHORIZED_PARTIES
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      # Supabase Storage (S3 connection) for photos.
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        value: photos
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_PUBLIC_URL
+        sync: false

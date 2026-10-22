@@ -4,7 +4,7 @@ from fastapi import HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .database import UPLOAD_DIR
+from . import storage
 from .models import Asset, AssetPhoto, Event, Inspection, Issue
 
 DEFAULT_CHECKLIST = [
@@ -156,6 +156,4 @@ async def save_photo(photo: UploadFile | None) -> str | None:
     data = await photo.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, "Photo is larger than 8 MB")
-    name = f"{uuid.uuid4().hex}{ext}"
-    (UPLOAD_DIR / name).write_bytes(data)
-    return f"/api/uploads/{name}"
+    return storage.put(f"{uuid.uuid4().hex}{ext}", data, photo.content_type or "application/octet-stream")

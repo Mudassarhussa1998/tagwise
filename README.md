@@ -139,7 +139,11 @@ NEXT_PUBLIC_APP_URL=http://192.168.1.20:3000 ALLOWED_DEV_ORIGINS=192.168.1.20 np
 | GET | `/api/public/{qr_token}` | QR token |
 | POST | `/api/public/{qr_token}/inspections`, `/api/public/{qr_token}/issues` | QR token |
 
+## Deploying
+
+Free hosting (Netlify + Render + Supabase), step by step: see **[DEPLOY.md](DEPLOY.md)**.
+
 ## Before deploying
 
 - Use Clerk **production** keys and set `CLERK_AUTHORIZED_PARTIES` to your real domain.
-- Store photos in S3 or similar instead of `backend/uploads/`.
+- Set the `S3_*` variables so photos go to a bucket (Supabase Storage, R2, S3) instead of `backend/uploads/`.

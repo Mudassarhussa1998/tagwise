@@ -1,0 +1,14 @@
+# Netlify settings for the Tagwise frontend (Next.js). Netlify reads this from the
+# repo root, so no build settings need to be typed into the dashboard. See DEPLOY.md.
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Netlify's Next.js runtime (handles server pages, proxy.ts and the /api rewrite to Render).
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

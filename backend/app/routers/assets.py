@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from ..database import get_db
-from ..database import UPLOAD_DIR
+from .. import storage
 from ..models import Asset, AssetPhoto, ChecklistItem, Event, Inspection, Issue, Maintenance, User, new_qr_token, utcnow
 from ..schemas import (
     AssetCreate,
@@ -179,7 +179,7 @@ def delete_asset_photo(asset_id: int, photo_id: int, user: User = Depends(get_cu
     photo = db.get(AssetPhoto, photo_id)
     if photo is None or photo.asset_id != asset.id:
         raise HTTPException(404, "Photo not found")
-    (UPLOAD_DIR / photo.url.rsplit("/", 1)[-1]).unlink(missing_ok=True)
+    storage.delete(photo.url)
     asset.photos.remove(photo)
     db.commit()
     return asset_detail(db, asset)

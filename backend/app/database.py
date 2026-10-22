@@ -14,6 +14,10 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 def database_url() -> URL | str:
     """DATABASE_URL wins if set; otherwise build one from the POSTGRES_* variables."""
     if url := os.getenv("DATABASE_URL"):
+        # Hosts (Supabase, Neon, Render) hand out postgres:// URLs; use the psycopg 3 driver.
+        for prefix in ("postgres://", "postgresql://"):
+            if url.startswith(prefix):
+                return "postgresql+psycopg://" + url.removeprefix(prefix)
         return url
     return URL.create(
         "postgresql+psycopg",
