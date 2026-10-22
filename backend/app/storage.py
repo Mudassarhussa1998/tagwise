@@ -25,8 +25,20 @@ log = logging.getLogger("tagwise.storage")
 LOCAL_PREFIX = "/api/uploads/"
 
 
+def _env(name: str) -> str:
+    """Setting values pasted into hosting dashboards often carry stray spaces or newlines."""
+    return os.getenv(name, "").strip()
+
+
+def _endpoint() -> str | None:
+    url = _env("S3_ENDPOINT").rstrip("/")
+    if url and "://" not in url:
+        url = "https://" + url
+    return url or None
+
+
 def _s3_configured() -> bool:
-    return bool(os.getenv("S3_BUCKET"))
+    return bool(_env("S3_BUCKET"))
 
 
 @lru_cache
@@ -36,10 +48,10 @@ def _client():
 
     return boto3.client(
         "s3",
-        endpoint_url=os.getenv("S3_ENDPOINT") or None,
-        region_name=os.getenv("S3_REGION") or "us-east-1",
-        aws_access_key_id=os.getenv("S3_ACCESS_KEY_ID"),
-        aws_secret_access_key=os.getenv("S3_SECRET_ACCESS_KEY"),
+        endpoint_url=_endpoint(),
+        region_name=_env("S3_REGION") or "us-east-1",
+        aws_access_key_id=_env("S3_ACCESS_KEY_ID"),
+        aws_secret_access_key=_env("S3_SECRET_ACCESS_KEY"),
         config=Config(
             signature_version="s3v4",
             # Supabase Storage (and most non-AWS providers) only accept path-style URLs:
@@ -54,7 +66,7 @@ def _client():
 
 
 def _public_base() -> str:
-    return os.environ["S3_PUBLIC_URL"].rstrip("/")
+    return _env("S3_PUBLIC_URL").rstrip("/")
 
 
 def put(name: str, data: bytes, content_type: str) -> str:
@@ -62,16 +74,18 @@ def put(name: str, data: bytes, content_type: str) -> str:
     if _s3_configured():
         try:
             _client().put_object(
-                Bucket=os.environ["S3_BUCKET"],
+                Bucket=_env("S3_BUCKET"),
                 Key=name,
                 Body=data,
                 ContentType=content_type,
                 CacheControl="public, max-age=31536000, immutable",
             )
-        except Exception as e:  # botocore ClientError / connection errors
-            code = getattr(e, "response", {}).get("Error", {}).get("Code") or type(e).__name__
-            log.error("Photo upload to bucket %s failed: %r", os.environ["S3_BUCKET"], e)
-            raise HTTPException(502, f"Couldn't save the photo to storage ({code}). Check the S3_* settings on the API server.")
+        except Exception as e:  # botocore ClientError, bad settings, connection errors
+            code = getattr(e, "response", {}).get("Error", {}).get("Code")
+            # Setting errors (e.g. "Invalid endpoint: ...") name the bad value; keep that text.
+            reason = code or f"{type(e).__name__}: {str(e).strip()[:160]}"
+            log.error("Photo upload to bucket %s failed: %r", _env("S3_BUCKET"), e)
+            raise HTTPException(502, f"Couldn't save the photo to storage ({reason}). Check the S3_* settings on the API server.")
         return f"{_public_base()}/{name}"
     (UPLOAD_DIR / name).write_bytes(data)
     return f"{LOCAL_PREFIX}{name}"
@@ -83,7 +97,7 @@ def delete(url: str) -> None:
         (UPLOAD_DIR / url.removeprefix(LOCAL_PREFIX)).unlink(missing_ok=True)
     elif _s3_configured() and url.startswith(_public_base() + "/"):
         try:
-            _client().delete_object(Bucket=os.environ["S3_BUCKET"], Key=url.removeprefix(_public_base() + "/"))
+            _client().delete_object(Bucket=_env("S3_BUCKET"), Key=url.removeprefix(_public_base() + "/"))
         except Exception as e:
             # The database row is removed anyway; an orphaned file is harmless.
             log.warning("Deleting %s from storage failed: %r", url, e)

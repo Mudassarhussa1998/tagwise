@@ -119,3 +119,17 @@ def test_storage_failure_returns_clear_error(client, monkeypatch):
     asset = client.post("/api/assets", json={"code": "ex-04", "name": "Excavator"}, headers=h).json()
     res = client.post(f"/api/assets/{asset['id']}/photos", files={"photo": ("a.png", PNG, "image/png")}, headers=h)
     assert res.status_code == 502 and "SignatureDoesNotMatch" in res.json()["detail"]
+
+
+def test_pasted_s3_settings_with_whitespace_still_work(monkeypatch):
+    monkeypatch.setenv("S3_ENDPOINT", "woxl.storage.supabase.co/storage/v1/s3/\n")  # no https, trailing slash + newline
+    monkeypatch.setenv("S3_REGION", " ap-southeast-2 \n")
+    monkeypatch.setenv("S3_ACCESS_KEY_ID", "id\n")
+    monkeypatch.setenv("S3_SECRET_ACCESS_KEY", "secret ")
+    storage._client.cache_clear()
+    try:
+        url = storage._client().generate_presigned_url("put_object", Params={"Bucket": "photos", "Key": "a.png"}, ExpiresIn=60)
+        assert url.startswith("https://woxl.storage.supabase.co/storage/v1/s3/photos/a.png?")
+        assert "ap-southeast-2" in url
+    finally:
+        storage._client.cache_clear()
