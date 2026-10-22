@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
-import { Boxes, CircleAlert, LayoutDashboard, Menu, Users, X } from "lucide-react";
+import { Boxes, CircleAlert, LayoutDashboard, Menu, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn, Logo } from "./ui";
 
@@ -12,7 +12,6 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/assets", label: "Assets", icon: Boxes },
   { href: "/issues", label: "Issues", icon: CircleAlert },
-  { href: "/team", label: "Team", icon: Users },
 ];
 
 function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate: () => void }) {
