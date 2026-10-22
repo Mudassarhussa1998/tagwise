@@ -4,8 +4,8 @@ Locally they go to backend/uploads/ (served at /api/uploads/...). In production,
 the S3_* variables and they go to any S3-compatible bucket instead (Supabase Storage,
 Cloudflare R2, AWS S3), because free hosts wipe the server's disk on every restart.
 
-    S3_ENDPOINT=https://<project>.supabase.co/storage/v1/s3
-    S3_REGION=ap-southeast-1
+    S3_ENDPOINT=https://<project>.storage.supabase.co/storage/v1/s3
+    S3_REGION=ap-southeast-2
     S3_BUCKET=photos
     S3_ACCESS_KEY_ID=...
     S3_SECRET_ACCESS_KEY=...
@@ -27,6 +27,7 @@ def _s3_configured() -> bool:
 @lru_cache
 def _client():
     import boto3
+    from botocore.config import Config
 
     return boto3.client(
         "s3",
@@ -34,6 +35,9 @@ def _client():
         region_name=os.getenv("S3_REGION") or "us-east-1",
         aws_access_key_id=os.getenv("S3_ACCESS_KEY_ID"),
         aws_secret_access_key=os.getenv("S3_SECRET_ACCESS_KEY"),
+        # Supabase Storage (and most non-AWS providers) only accept path-style URLs:
+        # <endpoint>/<bucket>/<key>, not <bucket>.<endpoint>/<key>.
+        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
     )
 
 
