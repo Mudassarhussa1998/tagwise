@@ -72,3 +72,50 @@ def test_clerk_profile_errors_name_the_misconfiguration(monkeypatch):
         with pytest.raises(HTTPException) as err:
             security.fetch_clerk_profile("user_1")
         assert expected in err.value.detail
+
+
+def test_uploads_are_plain_puts_without_chunked_checksums(monkeypatch):
+    """Supabase rejects boto3's default aws-chunked uploads with trailing checksums."""
+    monkeypatch.setenv("S3_ENDPOINT", "https://proj.storage.supabase.co/storage/v1/s3")
+    monkeypatch.setenv("S3_REGION", "ap-southeast-2")
+    monkeypatch.setenv("S3_ACCESS_KEY_ID", "id")
+    monkeypatch.setenv("S3_SECRET_ACCESS_KEY", "secret")
+    storage._client.cache_clear()
+    sent = {}
+
+    class Stop(Exception):
+        pass
+
+    def capture(request, **kwargs):
+        sent.update(request.headers)
+        sent["url"] = request.url
+        raise Stop
+
+    try:
+        client = storage._client()
+        client.meta.events.register("before-send.s3.PutObject", capture)
+        try:
+            client.put_object(Bucket="photos", Key="a.png", Body=b"data", ContentType="image/png")
+        except Stop:
+            pass
+    finally:
+        storage._client.cache_clear()
+    assert sent["url"] == "https://proj.storage.supabase.co/storage/v1/s3/photos/a.png"
+    assert "Content-Encoding" not in sent and "X-Amz-Trailer" not in sent
+
+
+def test_storage_failure_returns_clear_error(client, monkeypatch):
+    class Failing:
+        def put_object(self, **kwargs):
+            from botocore.exceptions import ClientError
+
+            raise ClientError({"Error": {"Code": "SignatureDoesNotMatch", "Message": "bad"}}, "PutObject")
+
+    monkeypatch.setenv("S3_BUCKET", "photos")
+    monkeypatch.setenv("S3_PUBLIC_URL", "https://proj.supabase.co/storage/v1/object/public/photos")
+    monkeypatch.setattr(storage, "_client", lambda: Failing())
+    onboard(client)
+    h = auth("user_admin")
+    asset = client.post("/api/assets", json={"code": "ex-04", "name": "Excavator"}, headers=h).json()
+    res = client.post(f"/api/assets/{asset['id']}/photos", files={"photo": ("a.png", PNG, "image/png")}, headers=h)
+    assert res.status_code == 502 and "SignatureDoesNotMatch" in res.json()["detail"]

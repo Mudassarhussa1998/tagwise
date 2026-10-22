@@ -12,10 +12,15 @@ Cloudflare R2, AWS S3), because free hosts wipe the server's disk on every resta
     S3_PUBLIC_URL=https://<project>.supabase.co/storage/v1/object/public/photos
 """
 
+import logging
 import os
 from functools import lru_cache
 
+from fastapi import HTTPException
+
 from .database import UPLOAD_DIR
+
+log = logging.getLogger("tagwise.storage")
 
 LOCAL_PREFIX = "/api/uploads/"
 
@@ -35,9 +40,16 @@ def _client():
         region_name=os.getenv("S3_REGION") or "us-east-1",
         aws_access_key_id=os.getenv("S3_ACCESS_KEY_ID"),
         aws_secret_access_key=os.getenv("S3_SECRET_ACCESS_KEY"),
-        # Supabase Storage (and most non-AWS providers) only accept path-style URLs:
-        # <endpoint>/<bucket>/<key>, not <bucket>.<endpoint>/<key>.
-        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+        config=Config(
+            signature_version="s3v4",
+            # Supabase Storage (and most non-AWS providers) only accept path-style URLs:
+            # <endpoint>/<bucket>/<key>, not <bucket>.<endpoint>/<key>.
+            s3={"addressing_style": "path"},
+            # boto3 >= 1.36 otherwise uploads as aws-chunked with a trailing CRC32 checksum,
+            # which S3-compatible services like Supabase and R2 reject.
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
+        ),
     )
 
 
@@ -48,13 +60,18 @@ def _public_base() -> str:
 def put(name: str, data: bytes, content_type: str) -> str:
     """Store a file and return the URL the browser should load it from."""
     if _s3_configured():
-        _client().put_object(
-            Bucket=os.environ["S3_BUCKET"],
-            Key=name,
-            Body=data,
-            ContentType=content_type,
-            CacheControl="public, max-age=31536000, immutable",
-        )
+        try:
+            _client().put_object(
+                Bucket=os.environ["S3_BUCKET"],
+                Key=name,
+                Body=data,
+                ContentType=content_type,
+                CacheControl="public, max-age=31536000, immutable",
+            )
+        except Exception as e:  # botocore ClientError / connection errors
+            code = getattr(e, "response", {}).get("Error", {}).get("Code") or type(e).__name__
+            log.error("Photo upload to bucket %s failed: %r", os.environ["S3_BUCKET"], e)
+            raise HTTPException(502, f"Couldn't save the photo to storage ({code}). Check the S3_* settings on the API server.")
         return f"{_public_base()}/{name}"
     (UPLOAD_DIR / name).write_bytes(data)
     return f"{LOCAL_PREFIX}{name}"
@@ -65,4 +82,8 @@ def delete(url: str) -> None:
     if url.startswith(LOCAL_PREFIX):
         (UPLOAD_DIR / url.removeprefix(LOCAL_PREFIX)).unlink(missing_ok=True)
     elif _s3_configured() and url.startswith(_public_base() + "/"):
-        _client().delete_object(Bucket=os.environ["S3_BUCKET"], Key=url.removeprefix(_public_base() + "/"))
+        try:
+            _client().delete_object(Bucket=os.environ["S3_BUCKET"], Key=url.removeprefix(_public_base() + "/"))
+        except Exception as e:
+            # The database row is removed anyway; an orphaned file is harmless.
+            log.warning("Deleting %s from storage failed: %r", url, e)
