@@ -14,11 +14,9 @@ import {
   FileText,
   HardHat,
   History,
-  LayoutDashboard,
   MessageCircleWarning,
   Printer,
   QrCode,
-  ScanLine,
   ShieldCheck,
   Smartphone,
   Stethoscope,
@@ -27,8 +25,9 @@ import {
   Warehouse,
   X,
 } from "lucide-react";
-import { HeroPhone, LiveFeed } from "@/components/landing/Demos";
+import { LiveFeed } from "@/components/landing/Demos";
 import { CountUp, Reveal, ScrollHeader } from "@/components/landing/Motion";
+import { ScrollStory } from "@/components/landing/ScrollStory";
 import { Logo } from "@/components/ui";
 
 const INDUSTRIES = [
@@ -38,12 +37,6 @@ const INDUSTRIES = [
   { icon: Truck, label: "Fleets & vehicles" },
   { icon: Building2, label: "Facilities" },
   { icon: Stethoscope, label: "Medical equipment" },
-];
-
-const STEPS = [
-  { icon: QrCode, title: "Register the asset", text: "Add a machine, choose what must be checked, and print its two QR labels in seconds." },
-  { icon: ScanLine, title: "Scan and check", text: "Operators scan with any phone camera, tap OK / Not OK, add a photo, and submit. No app, no login." },
-  { icon: LayoutDashboard, title: "See it instantly", text: "Status, issues and history update live, so supervisors act before a small fault stops the line." },
 ];
 
 const FEATURES = [
@@ -136,60 +129,8 @@ export default function Home() {
         </div>
       </ScrollHeader>
 
-      {/* ---------- Hero ---------- */}
-      <section className="relative isolate">
-        <div className="bg-grid pointer-events-none absolute inset-0 -z-10" />
-        <div className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[520px] w-[900px] max-w-[200vw] -translate-x-1/2 rounded-full bg-gradient-to-b from-primary-100/70 to-transparent blur-3xl" />
-        <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 pb-16 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-[1.1fr_1fr] lg:gap-10 lg:pb-24 lg:pt-20">
-          <div className="text-center lg:text-left">
-            <div className="animate-fade-up">
-              <Eyebrow>
-                <span className="relative flex size-2">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary-500 opacity-60" />
-                  <span className="relative inline-flex size-2 rounded-full bg-primary-600" />
-                </span>
-                QR asset inspections & maintenance
-              </Eyebrow>
-            </div>
-            <h1 className="animate-fade-up mt-6 text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 [animation-delay:80ms] sm:text-5xl lg:text-[3.6rem]">
-              Every machine checked.
-              <br />
-              <span className="bg-gradient-to-r from-primary-600 via-primary-500 to-sky-500 bg-clip-text text-transparent">Every fault on record.</span>
-            </h1>
-            <p className="animate-fade-up mx-auto mt-6 max-w-xl text-base leading-relaxed text-slate-600 [animation-delay:160ms] sm:text-lg lg:mx-0">
-              Stick a QR label on each asset. Operators scan it to run checklists and report failures with photos. Supervisors see status, issues and the full
-              history instantly, with no paper, spreadsheets or chasing messages.
-            </p>
-            <div className="animate-fade-up mt-8 flex flex-col justify-center gap-3 [animation-delay:240ms] sm:flex-row lg:justify-start">
-              <Link
-                href="/sign-up"
-                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-6 py-3.5 font-semibold text-white shadow-lg shadow-primary-600/30 transition hover:-translate-y-0.5 hover:bg-primary-700 hover:shadow-xl"
-              >
-                Start free <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
-              </Link>
-              <a
-                href="#how"
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3.5 font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
-              >
-                See how it works
-              </a>
-            </div>
-            <ul className="animate-fade-up mt-7 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-500 [animation-delay:320ms] lg:justify-start">
-              {["No app for operators", "Set up in minutes", "Audit-ready history"].map((t) => (
-                <li key={t} className="flex items-center gap-1.5">
-                  <span className="grid size-4 place-items-center rounded-full bg-emerald-100 text-emerald-700">
-                    <Check className="size-3" />
-                  </span>
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="animate-fade-up [animation-delay:200ms]">
-            <HeroPhone />
-          </div>
-        </div>
-      </section>
+      {/* ---------- Hero: scroll-driven story ---------- */}
+      <ScrollStory />
 
       {/* ---------- Industries marquee ---------- */}
       <section className="border-y border-slate-200/70 bg-slate-50/70 py-6">
@@ -255,32 +196,6 @@ export default function Home() {
               </ul>
             </div>
           </Reveal>
-        </div>
-      </section>
-
-      {/* ---------- How it works ---------- */}
-      <section id="how" className="scroll-mt-20 bg-slate-50/70 py-20 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <SectionHeading eyebrow="How it works" title="From asset to control in three steps." text="No months-long rollout. Your first asset can be live today." />
-          <div className="relative mt-14">
-            <div className="absolute left-[16%] right-[16%] top-8 hidden h-px bg-gradient-to-r from-primary-200 via-primary-400 to-primary-200 md:block" />
-            <ol className="relative grid gap-6 md:grid-cols-3">
-              {STEPS.map(({ icon: Icon, title, text }, i) => (
-                <li key={title}>
-                  <Reveal delay={i * 140} className="h-full">
-                    <div className="h-full rounded-2xl border border-slate-200 bg-white p-6 text-center transition duration-300 hover:-translate-y-1 hover:shadow-xl">
-                      <span className="relative mx-auto grid size-16 place-items-center rounded-2xl bg-primary-600 text-white shadow-lg shadow-primary-600/30">
-                        <Icon className="size-7" />
-                        <span className="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full border-2 border-white bg-sky-500 text-[11px] font-bold">{i + 1}</span>
-                      </span>
-                      <p className="mt-5 text-lg font-semibold text-slate-900">{title}</p>
-                      <p className="mt-2 text-sm leading-relaxed text-slate-600">{text}</p>
-                    </div>
-                  </Reveal>
-                </li>
-              ))}
-            </ol>
-          </div>
         </div>
       </section>
 
