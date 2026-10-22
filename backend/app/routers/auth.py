@@ -6,13 +6,17 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Invite, Organization, User
 from ..schemas import InviteIn, InviteOut, MeOut, OnboardIn, SessionOut, UserOut
-from ..security import fetch_clerk_profile, get_clerk_user_id, get_current_user, require_admin
+from ..security import fetch_clerk_profile, get_clerk_user_id, get_current_user, is_platform_admin, require_admin
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
 
 def me_out(user: User) -> MeOut:
-    return MeOut(**UserOut.model_validate(user).model_dump(), organization_name=user.organization.name)
+    return MeOut(
+        **UserOut.model_validate(user).model_dump(),
+        organization_name=user.organization.name,
+        is_platform_admin=is_platform_admin(user),
+    )
 
 
 @router.get("/auth/session", response_model=SessionOut)

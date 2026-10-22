@@ -3,7 +3,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 // Dashboard pages need a Clerk session. The landing page, sign-in/up and the
 // public QR scan pages (/scan/...) stay open. API calls are proxied to FastAPI,
 // which verifies the Clerk token itself.
-const isProtected = createRouteMatcher(["/dashboard(.*)", "/assets(.*)", "/issues(.*)", "/team(.*)", "/onboarding(.*)"]);
+const isProtected = createRouteMatcher(["/dashboard(.*)", "/assets(.*)", "/issues(.*)", "/team(.*)", "/admin(.*)", "/onboarding(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtected(req)) await auth.protect();

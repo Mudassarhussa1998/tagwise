@@ -40,6 +40,7 @@ You'll copy values between dashboards; keep a text file open to collect them. Ne
    | `CLERK_SECRET_KEY` | your `sk_test_...` key |
    | `CLERK_AUTHORIZED_PARTIES` | `https://tagwise.netlify.app` (your Netlify URL, see step 3; you can fix it later) |
    | `CORS_ORIGINS` | same as above |
+   | `PLATFORM_ADMIN_EMAILS` | your email(s), comma-separated: these accounts get the **Admin** page with every company and user |
    | `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL` | from Supabase steps 4–5 |
 
 3. **Apply**. The first deploy installs packages, creates all tables (`alembic upgrade head`) and starts the API.

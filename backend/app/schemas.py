@@ -28,6 +28,7 @@ class UserOut(ORM):
 
 class MeOut(UserOut):
     organization_name: str
+    is_platform_admin: bool = False
 
 
 class SessionOut(BaseModel):
@@ -259,3 +260,63 @@ class PublicResult(BaseModel):
     ok: bool
     message: str
     asset_status: AssetStatus
+
+
+# ---- platform admin (whole-site view across all companies) ----
+
+class PlatformTotals(BaseModel):
+    companies: int
+    users: int
+    assets: int
+    inspections: int
+    open_issues: int
+    pending_invites: int
+    companies_7d: int
+    users_7d: int
+    inspections_7d: int
+
+
+class PlatformOverview(BaseModel):
+    totals: PlatformTotals
+    recent_companies: list["PlatformCompany"]
+    recent_users: list["PlatformUser"]
+
+
+class PlatformCompany(BaseModel):
+    id: int
+    name: str
+    created_at: UTCDatetime
+    users: int
+    admins: int
+    assets: int
+    inspections: int
+    open_issues: int
+    last_activity: UTCDatetime | None
+
+
+class PlatformUser(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str
+    company_id: int
+    company_name: str
+    created_at: UTCDatetime
+
+
+class PlatformSignup(BaseModel):
+    """A Clerk account that hasn't created or joined a company yet."""
+
+    clerk_id: str
+    name: str
+    email: str
+    created_at: UTCDatetime | None
+    last_sign_in_at: UTCDatetime | None
+
+
+class PlatformSignups(BaseModel):
+    clerk_total: int | None
+    without_company: list[PlatformSignup]
+
+
+PlatformOverview.model_rebuild()

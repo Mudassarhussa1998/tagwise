@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { LoaderCircle, X } from "lucide-react";
 import type { AssetStatus, Severity } from "@/lib/api";
@@ -96,6 +96,8 @@ export function EmptyState({ icon, title, children }: { icon: React.ReactNode; t
   );
 }
 
+const noopSubscribe = () => () => {};
+
 export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
     if (!open) return;
@@ -110,25 +112,33 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  // There's no <body> to portal into during server rendering (e.g. /assets?new=1 opens a
+  // modal on first render); render it once hydrated in the browser.
+  const inBrowser = useSyncExternalStore(noopSubscribe, () => true, () => false);
+
+  if (!open || !inBrowser) return null;
   // Portal to <body>: an animated (transformed) ancestor would otherwise trap the
   // fixed overlay inside its own box instead of covering the whole screen.
+  // Phones get a full-screen sheet (header, scrolling body); larger screens a centred dialog.
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-slate-900/40 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onMouseDown={(e) => e.stopPropagation()}
-        className={cn("animate-fade-up max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:rounded-2xl", wide ? "sm:max-w-2xl" : "sm:max-w-lg")}
+        className={cn(
+          "animate-fade-up flex h-[100dvh] w-full flex-col bg-white shadow-xl sm:h-auto sm:max-h-[90dvh] sm:rounded-2xl",
+          wide ? "sm:max-w-2xl" : "sm:max-w-lg",
+        )}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
-          <h2 className="font-semibold text-slate-900">{title}</h2>
-          <button onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:py-4">
+          <h2 className="truncate text-base font-semibold text-slate-900">{title}</h2>
+          <button onClick={onClose} className="-mr-2 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800" aria-label="Close">
             <X className="size-5" />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="flex-1 overflow-y-auto overscroll-contain p-5">{children}</div>
       </div>
     </div>,
     document.body,

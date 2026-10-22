@@ -157,9 +157,11 @@ export function AssetForm({
         </>
       )}
       <ErrorNote message={error} />
-      <Button type="submit" loading={saving} className="w-full">
-        {submitLabel}
-      </Button>
+      <div className="form-actions">
+        <Button type="submit" loading={saving} className="w-full">
+          {submitLabel}
+        </Button>
+      </div>
     </form>
   );
 }

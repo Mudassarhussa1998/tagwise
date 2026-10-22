@@ -13,6 +13,8 @@ export interface User {
 
 export interface Me extends User {
   organization_name: string;
+  /** Site owner: can open /admin. */
+  is_platform_admin: boolean;
 }
 
 /** `user` is null when the Clerk account hasn't joined or created an organization yet. */
@@ -165,6 +167,49 @@ export interface AssetReport {
   maintenance: Maintenance[];
   inspections: Inspection[];
   events: TimelineEvent[];
+}
+
+export interface PlatformCompany {
+  id: number;
+  name: string;
+  created_at: string;
+  users: number;
+  admins: number;
+  assets: number;
+  inspections: number;
+  open_issues: number;
+  last_activity: string | null;
+}
+
+export interface PlatformUser {
+  id: number;
+  name: string;
+  email: string;
+  role: "admin" | "member";
+  company_id: number;
+  company_name: string;
+  created_at: string;
+}
+
+export interface PlatformOverview {
+  totals: {
+    companies: number;
+    users: number;
+    assets: number;
+    inspections: number;
+    open_issues: number;
+    pending_invites: number;
+    companies_7d: number;
+    users_7d: number;
+    inspections_7d: number;
+  };
+  recent_companies: PlatformCompany[];
+  recent_users: PlatformUser[];
+}
+
+export interface PlatformSignups {
+  clerk_total: number | null;
+  without_company: { clerk_id: string; name: string; email: string; created_at: string | null; last_sign_in_at: string | null }[];
 }
 
 export interface PublicResult {

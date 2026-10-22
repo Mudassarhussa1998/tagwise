@@ -27,6 +27,9 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      # Emails that can open /admin and see every company and user (comma-separated).
+      - key: PLATFORM_ADMIN_EMAILS
+        sync: false
       # Supabase Storage (S3 connection) for photos.
       - key: S3_ENDPOINT
         sync: false

@@ -362,9 +362,11 @@ function MaintenanceForm({ asset, defaultName, onSaved }: { asset: AssetDetail; 
         </fieldset>
       )}
       <ErrorNote message={error} />
-      <Button type="submit" loading={saving} className="w-full">
-        Save maintenance
-      </Button>
+      <div className="form-actions">
+        <Button type="submit" loading={saving} className="w-full">
+          Save maintenance
+        </Button>
+      </div>
     </form>
   );
 }
@@ -392,9 +394,11 @@ function ChecklistForm({ asset, onSaved }: { asset: AssetDetail; onSaved: (a: As
         <textarea className="input min-h-48" value={text} onChange={(e) => setText(e.target.value)} />
       </Field>
       <ErrorNote message={error} />
-      <Button type="submit" loading={saving} className="w-full">
-        Save checklist
-      </Button>
+      <div className="form-actions">
+        <Button type="submit" loading={saving} className="w-full">
+          Save checklist
+        </Button>
+      </div>
     </form>
   );
 }

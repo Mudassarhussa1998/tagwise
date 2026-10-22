@@ -137,9 +137,11 @@ function InviteForm({ onInvited }: { onInvited: (i: Invite) => void }) {
         </select>
       </Field>
       <ErrorNote message={error} />
-      <Button type="submit" loading={saving} className="w-full">
-        Send invite
-      </Button>
+      <div className="form-actions">
+        <Button type="submit" loading={saving} className="w-full">
+          Send invite
+        </Button>
+      </div>
     </form>
   );
 }

@@ -27,6 +27,9 @@ CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY", "").strip()
 # Origins allowed to have minted the token (the `azp` claim). Empty disables the check.
 AUTHORIZED_PARTIES = [p.strip().rstrip("/") for p in os.getenv("CLERK_AUTHORIZED_PARTIES", "http://localhost:3000").split(",") if p.strip()]
 
+# Site owners: can see every company and user at /admin. Comma-separated emails.
+PLATFORM_ADMIN_EMAILS = {e.strip().lower() for e in os.getenv("PLATFORM_ADMIN_EMAILS", "").split(",") if e.strip()}
+
 bearer = HTTPBearer(auto_error=False)
 log = logging.getLogger("tagwise.auth")
 
@@ -89,6 +92,16 @@ def get_current_user(clerk_id: str = Depends(get_clerk_user_id), db: Session = D
     return user
 
 
+def is_platform_admin(user: User) -> bool:
+    return bool(user.email) and user.email.lower() in PLATFORM_ADMIN_EMAILS
+
+
+def require_platform_admin(user: User = Depends(get_current_user)) -> User:
+    if not is_platform_admin(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Platform admins only")
+    return user
+
+
 def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Admins only")
@@ -123,7 +136,10 @@ def fetch_clerk_profile(clerk_id: str) -> ClerkProfile:
     if res.is_error:
         log.warning("Clerk user lookup returned HTTP %s: %s", res.status_code, res.text[:200])
         raise HTTPException(502, f"Clerk returned an error ({res.status_code}) while loading your profile. Try again.")
-    data = res.json()
+    return profile_from_clerk_user(res.json())
+
+
+def profile_from_clerk_user(data: dict) -> ClerkProfile:
     email = next(
         (
             e["email_address"].lower()
@@ -134,3 +150,19 @@ def fetch_clerk_profile(clerk_id: str) -> ClerkProfile:
     )
     name = " ".join(p for p in (data.get("first_name"), data.get("last_name")) if p) or data.get("username") or email.split("@")[0]
     return ClerkProfile(name=(name or "New user")[:120], email=email)
+
+
+def list_clerk_users(limit: int = 100) -> tuple[list[dict], int | None]:
+    """Newest Clerk accounts (raw user objects) and the total count, for the platform admin page."""
+    if not CLERK_SECRET_KEY:
+        raise HTTPException(500, "CLERK_SECRET_KEY is not configured on the API server")
+    headers = {"Authorization": f"Bearer {CLERK_SECRET_KEY}"}
+    try:
+        users = httpx.get("https://api.clerk.com/v1/users", params={"limit": limit, "order_by": "-created_at"}, headers=headers, timeout=15)
+        users.raise_for_status()
+        count = httpx.get("https://api.clerk.com/v1/users/count", headers=headers, timeout=15)
+        total = count.json().get("total_count") if count.is_success else None
+    except httpx.HTTPError as e:
+        log.warning("Listing Clerk users failed: %r", e)
+        raise HTTPException(502, "Couldn't load the sign-up list from Clerk. Try again.")
+    return users.json(), total

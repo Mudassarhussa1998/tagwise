@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
-import { Boxes, CircleAlert, LayoutDashboard, Menu, X } from "lucide-react";
+import { Boxes, CircleAlert, LayoutDashboard, Menu, ShieldCheck, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { cn, Logo } from "./ui";
 
@@ -14,10 +14,12 @@ const NAV = [
   { href: "/issues", label: "Issues", icon: CircleAlert },
 ];
 
-function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate: () => void }) {
+const ADMIN_LINK = { href: "/admin", label: "Admin", icon: ShieldCheck };
+
+function NavLinks({ pathname, onNavigate, admin }: { pathname: string; onNavigate: () => void; admin: boolean }) {
   return (
     <nav className="flex flex-1 flex-col gap-0.5 px-3">
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {(admin ? [...NAV, ADMIN_LINK] : NAV).map(({ href, label, icon: Icon }) => {
         const active = pathname === href || pathname.startsWith(href + "/");
         return (
           <Link
@@ -39,18 +41,19 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate: () =
 }
 
 // usePathname() is request-time data on dynamic routes, so it streams in behind Suspense.
-function CurrentNavLinks({ onNavigate }: { onNavigate: () => void }) {
-  return <NavLinks pathname={usePathname()} onNavigate={onNavigate} />;
+function CurrentNavLinks({ onNavigate, admin }: { onNavigate: () => void; admin: boolean }) {
+  return <NavLinks pathname={usePathname()} onNavigate={onNavigate} admin={admin} />;
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  const admin = !!user?.is_platform_admin;
 
   const nav = (
-    <Suspense fallback={<NavLinks pathname="" onNavigate={close} />}>
-      <CurrentNavLinks onNavigate={close} />
+    <Suspense fallback={<NavLinks pathname="" onNavigate={close} admin={admin} />}>
+      <CurrentNavLinks onNavigate={close} admin={admin} />
     </Suspense>
   );
 

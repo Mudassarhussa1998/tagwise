@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .database import UPLOAD_DIR
-from .routers import assets, auth, public
+from .routers import assets, auth, platform, public
 
 # Schema is managed by Alembic: run `alembic upgrade head` before starting.
 app = FastAPI(title="Tagwise API", version="1.1.0")
@@ -21,6 +21,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(assets.router)
 app.include_router(public.router)
+app.include_router(platform.router)
 app.mount("/api/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
